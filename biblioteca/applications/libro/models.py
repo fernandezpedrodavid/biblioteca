@@ -1,4 +1,8 @@
 from django.db import models
+from django.db.models.signals import post_save
+
+#apps de terceros
+from PIL import Image
 
 #from local apps
 from applications.autor.models import Autor
@@ -23,11 +27,21 @@ class Libro(models.Model):
     autores = models.ManyToManyField(Autor)
     titulo = models.CharField( max_length=50) 
     fecha = models.DateField('Fecha de lanzamiento') 
-    portada = models.ImageField(upload_to='portadas', blank=True, null=True)
+    portada = models.ImageField(upload_to='portadas', blank=True)
     visitas = models.PositiveIntegerField()
+    stok = models.PositiveIntegerField(default=0)
     
     objects = LibroManager()
     
     def __str__(self):
         return  str(self.id) + '-' +  self.titulo
+    
+def optimize_image(sender, instance, **kwargs ):
+    print("=========")
+    print(instance)
+    if instance.portada:
+        portada = Image.open(instance.portada.path)
+        portada.save(instance.portada.path, quality=20, optimize=True)
+    
+post_save.connect(optimize_image, sender=Libro)
     

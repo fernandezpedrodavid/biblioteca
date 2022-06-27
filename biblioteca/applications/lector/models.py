@@ -1,22 +1,23 @@
 from django.db import models
+from django.db.models.signals import post_delete
 
 # from local apps
 from applications.libro.models import Libro
-
+from applications.autor.models import Persona
+ 
 #from managers
 from .managers import PrestamoManager
+from .signals import update_libro_stok
 
-class Lector(models.Model):
-    nombre = models.CharField( max_length=50)
-    apellidos = models.CharField( max_length=50)
-    nacionalidad = models.CharField( max_length=20)
-    edad = models.PositiveIntegerField(default=0)
+class Lector(Persona):
     
-    def __str__(self):
-        return self.nombre
+    verbose_name = 'lector'
+    verbose_name_plural = 'Lectores'
     
 class Prestamo(models.Model):
-    lector = models.ForeignKey(Lector,on_delete=models.CASCADE)
+    lector = models.ForeignKey(
+        Lector,
+        on_delete=models.CASCADE)
     libro = models.ForeignKey(
         Libro,
         on_delete=models.CASCADE,
@@ -28,5 +29,21 @@ class Prestamo(models.Model):
     
     objects = PrestamoManager()
     
+    def save(self, *args, **kwargs):
+        
+        print('========')
+        self.libro.stok = self.libro.stok - 1
+        self.libro.save()
+        
+        super(Prestamo, self).save(*args, **kwargs)
+    
     def __str__(self):
         return self.libro.titulo 
+    
+    
+#def upgrade_libro_stok(sender, instance, **kwargs):
+    #actualizamos el stok si se elimina un prestamo
+#    instance.libro.stok = instance.libro.stok + 1
+#    instance.libro.save()
+    
+post_delete.connect(update_libro_stok, sender=Prestamo)
